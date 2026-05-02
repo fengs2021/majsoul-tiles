@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🀄 牌效助手</title>
+<style>
+  :root {
+    --bg: #1a3a1a;
+    --panel: rgba(20, 50, 20, 0.92);
+    --border: #3a6a3a;
+    --text: #d4f0d4;
+    --accent: #5ae05a;
+    --warn: #f0c040;
+    --danger: #f06060;
+    --tile-bg: #0d260d;
+    --card-bg: rgba(30, 70, 30, 0.8);
+    --highlight: #3ae03a;
+    --best-glow: rgba(50, 220, 50, 0.25);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    font-family: -apple-system, "Noto Sans SC", "PingFang SC", sans-serif;
+    background: transparent;
+    color: var(--text);
+    overflow: hidden;
+    -webkit-text-size-adjust: none;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    max-width: 480px;
+    margin: 0 auto;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  /* === 顶部状态栏 === */
+  .header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .header .title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 1px;
+  }
+  .header .status {
+    font-size: 11px;
+    opacity: 0.7;
+  }
+  .header .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 2s infinite;
+    flex-shrink: 0;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* === 主内容区 === */
+  .main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* === 手牌展示 === */
+  .section-title {
+    font-size: 11px;
+    color: #6a9a6a;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    padding: 2px 0;
+  }
+  .hand-tiles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+  }
+  .tile-tag {
+    background: var(--tile-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    min-width: 36px;
+    text-align: center;
+    transition: all 0.2s;
+  }
+  .tile-tag.best-discard {
+    border-color: var(--accent);
+    background: var(--best-glow);
+    color: var(--highlight);
+    box-shadow: 0 0 8px rgba(50,220,50,0.3);
+  }
+
+  /* === 推荐卡片 === */
+  .recommend-card {
+    background: var(--card-bg);
+    border: 2px solid var(--accent);
+    border-radius: 12px;
+    padding: 12px 14px;
+    box-shadow: 0 0 16px rgba(50,220,50,0.15);
+  }
+  .recommend-card .rec-header {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .recommend-card .rec-discard {
+    font-size: 28px;
+    font-weight: 900;
+    color: var(--highlight);
+    text-align: center;
+    padding: 8px 0;
+    text-shadow: 0 0 12px rgba(50,220,50,0.4);
+  }
+  .recommend-card .rec-detail {
+    font-size: 12px;
+    opacity: 0.85;
+    line-height: 1.6;
+  }
+  .rec-highlight {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* === 候选列表 === */
+  .candidates {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .candidate-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--card-bg);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 13px;
+    transition: background 0.2s;
+  }
+  .candidate-row.best {
+    background: var(--best-glow);
+    border: 1px solid var(--accent);
+  }
+  .candidate-row .rank {
+    width: 20px;
+    text-align: center;
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 12px;
+  }
+  .candidate-row .cand-tile {
+    font-weight: 700;
+    font-size: 16px;
+    min-width: 42px;
+  }
+  .candidate-row .cand-info {
+    flex: 1;
+    font-size: 11px;
+    opacity: 0.8;
+  }
+  .candidate-row .cand-ukeire {
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .best-badge {
+    font-size: 10px;
+    background: var(--accent);
+    color: #0d260d;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-weight: 700;
+  }
+
+  /* === 快捷输入区 === */
+  .input-bar {
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    padding: 8px 12px;
+    flex-shrink: 0;
+  }
+  .input-row {
+    display: flex;
+    gap: 6px;
+  }
+  .input-row input {
+    flex: 1;
+    background: var(--tile-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+  }
+  .input-row input:focus {
+    border-color: var(--accent);
+  }
+  .input-row input::placeholder {
+    color: #4a6a4a;
+  }
+  .btn {
+    background: var(--accent);
+    color: #0d260d;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.2s;
+  }
+  .btn:active { opacity: 0.7; }
+  .btn-sm {
+    padding: 4px 12px;
+    font-size: 12px;
+  }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  /* === 加载/空状态 === */
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    opacity: 0.6;
+  }
+  .empty-state .icon {
+    font-size: 48px;
+    margin-bottom: 8px;
+  }
+  .empty-state .hint {
+    font-size: 13px;
+    text-align: center;
+    line-height: 1.6;
+  }
+  .quick-tiles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+    padding: 4px 0;
+  }
+  .quick-tile {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .quick-tile:active {
+    background: var(--accent);
+    color: #0d260d;
+    border-color: var(--accent);
+  }
+  .quick-tile.selected {
+    background: var(--accent);
+    color: #0d260d;
+    border-color: var(--accent);
+  }
+
+  /* === 滚动条 === */
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="dot"></span>
+  <span class="title">🀄 牌效助手</span>
+  <span class="status" id="status">就绪</span>
+</div>
+
+<div class="main" id="main-content">
+  <!-- 空状态 -->
+  <div class="empty-state" id="empty-state">
+    <div class="icon">🀄</div>
+    <div class="hint">
+      输入手牌或粘贴截图链接<br>
+      获得实时切牌建议
+    </div>
+  </div>
+
+  <!-- 结果区（初始隐藏） -->
+  <div id="result-area" style="display:none;display:flex;flex-direction:column;gap:8px;">
+    <div class="section-title">🀫 手牌</div>
+    <div class="hand-tiles" id="hand-display"></div>
+
+    <div class="recommend-card" id="recommend-card">
+      <div class="rec-header">🏆 推荐切牌</div>
+      <div class="rec-discard" id="best-discard-text">--</div>
+      <div class="rec-detail" id="rec-detail"></div>
+    </div>
+
+    <div class="section-title">📊 候选分析</div>
+    <div class="candidates" id="candidates-list"></div>
+  </div>
+</div>
+
+<div class="input-bar">
+  <!-- 快速选牌 -->
+  <div class="quick-tiles" id="quick-tiles"></div>
+  <div class="input-row">
+    <input type="text" id="hand-input"
+           placeholder="输入手牌: 三万,五万,五万..."
+           autocomplete="off">
+    <button class="btn" id="analyze-btn">分析</button>
+  </div>
+</div>
+
+<script>
+// ===== 常量 =====
+const TILE_NAMES = [
+  '一万','二万','三万','四万','五万','六万','七万','八万','九万',
+  '一筒','二筒','三筒','四筒','五筒','六筒','七筒','八筒','九筒',
+  '一索','二索','三索','四索','五索','六索','七索','八索','九索',
+  '東','南','西','北','白','發','中',
+];
+
+// ===== 状态 =====
+let selectedTiles = [];
+let lastResult = null;
+
+// ===== 初始化快速选牌 =====
+function initQuickTiles() {
+  const container = document.getElementById('quick-tiles');
+  TILE_NAMES.forEach(name => {
+    const el = document.createElement('span');
+    el.className = 'quick-tile';
+    el.textContent = name;
+    el.onclick = () => toggleTile(name, el);
+    container.appendChild(el);
+  });
+}
+
+function toggleTile(name, el) {
+  const idx = selectedTiles.indexOf(name);
+  if (idx >= 0) {
+    selectedTiles.splice(idx, 1);
+    el.classList.remove('selected');
+  } else {
+    if (selectedTiles.length >= 14) {
+      setStatus('最多14张', 'warn');
+      return;
+    }
+    selectedTiles.push(name);
+    el.classList.add('selected');
+  }
+  updateInput();
+  checkAutoAnalyze();
+}
+
+function updateInput() {
+  document.getElementById('hand-input').value = selectedTiles.join(',');
+}
+
+function checkAutoAnalyze() {
+  if (selectedTiles.length >= 13 && selectedTiles.length <= 14) {
+    doAnalyze();
+  }
+}
+
+// ===== 分析 =====
+async function doAnalyze() {
+  const input = document.getElementById('hand-input').value.trim();
+  const tiles = input ? input.split(/[,，\s]+/).filter(Boolean) : selectedTiles;
+
+  if (tiles.length < 5) {
+    setStatus('至少5张牌', 'warn');
+    return;
+  }
+
+  setStatus('分析中...');
+  const btn = document.getElementById('analyze-btn');
+  btn.textContent = '...';
+  btn.disabled = true;
+
+  try {
+    const resp = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hand: tiles }),
+    });
+    const data = await resp.json();
+
+    if (data.error) {
+      setStatus(data.error, 'error');
+      btn.textContent = '分析';
+      btn.disabled = false;
+      return;
+    }
+
+    lastResult = data;
+    renderResult(data);
+    setStatus(`✓ ${data.shanten === 0 ? '听牌' : data.shanten + '向听'}`);
+    btn.textContent = '分析';
+    btn.disabled = false;
+  } catch (e) {
+    setStatus('连接失败', 'error');
+    btn.textContent = '分析';
+    btn.disabled = false;
+  }
+}
+
+// ===== 渲染结果 =====
+function renderResult(data) {
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('result-area').style.display = 'flex';
+
+  // 手牌
+  const handDiv = document.getElementById('hand-display');
+  handDiv.innerHTML = '';
+  const bestTile = data.best_discard;
+  selectedTiles.forEach(name => {
+    const tag = document.createElement('span');
+    tag.className = 'tile-tag';
+    if (name === bestTile) tag.classList.add('best-discard');
+    tag.textContent = name;
+    handDiv.appendChild(tag);
+  });
+
+  // 推荐
+  document.getElementById('best-discard-text').textContent = bestTile || '--';
+  const shantenStr = data.shanten === 0 ? '🎯 听牌' : `⏳ ${data.shanten}向听`;
+  const best = data.candidates?.[0];
+  document.getElementById('rec-detail').innerHTML = `
+    ${shantenStr} &nbsp;|&nbsp;
+    进张 <span class="rec-highlight">${best?.ukeire_types || 0}</span> 种
+    / <span class="rec-highlight">${best?.ukeire_count || 0}</span> 枚
+    ${data.shanten_detail?.pair ? '&nbsp;|&nbsp;有雀头' : '&nbsp;|&nbsp;无雀头'}
+    <br>等牌: ${(best?.ukeire_tiles || []).slice(0,8).join(' ')}
+  `;
+
+  // 候选
+  const listDiv = document.getElementById('candidates-list');
+  listDiv.innerHTML = '';
+  (data.candidates || []).slice(0, 6).forEach((c, i) => {
+    const row = document.createElement('div');
+    row.className = 'candidate-row' + (c.is_best ? ' best' : '');
+    row.innerHTML = `
+      <span class="rank">${i+1}</span>
+      <span class="cand-tile">${c.tile}</span>
+      <span class="cand-info">
+        打后 ${c.shanten_after === 0 ? '听牌' : c.shanten_after + '向听'}
+        &nbsp;|&nbsp; 进张
+      </span>
+      <span class="cand-ukeire">${c.ukeire_types}种/${c.ukeire_count}枚</span>
+      ${c.is_best ? '<span class="best-badge">BEST</span>' : ''}
+    `;
+    listDiv.appendChild(row);
+  });
+}
+
+// ===== 状态 =====
+function setStatus(msg, type) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.style.color = type === 'error' ? 'var(--danger)'
+    : type === 'warn' ? 'var(--warn)' : '';
+  if (!type) el.style.color = '';
+}
+
+// ===== 事件 =====
+document.getElementById('analyze-btn').onclick = doAnalyze;
+
+document.getElementById('hand-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doAnalyze();
+});
+
+// 点击手牌标签删除
+document.getElementById('hand-display').addEventListener('click', e => {
+  if (e.target.classList.contains('tile-tag')) {
+    const name = e.target.textContent;
+    const idx = selectedTiles.indexOf(name);
+    if (idx >= 0) {
+      selectedTiles.splice(idx, 1);
+      updateInput();
+      // 同步更新快速选牌
+      document.querySelectorAll('.quick-tile').forEach(el => {
+        if (el.textContent === name) el.classList.remove('selected');
+      });
+      if (selectedTiles.length >= 13) doAnalyze();
+    }
+  }
+});
+
+// ===== 启动 =====
+initQuickTiles();
+setStatus('就绪 ✅');
+
+// 定期 ping
+setInterval(async () => {
+  try {
+    const r = await fetch('/api/ping');
+    if (r.ok) setStatus('就绪 ✅');
+  } catch(e) {}
+}, 30000);
+</script>
+</body>
+</html>
